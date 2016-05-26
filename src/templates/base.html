@@ -1,0 +1,12 @@
+{% block css %} {% endblock %} {% block preload_js %} {% endblock %} {% block extra-head %}{% endblock %}   
+Nonrel-testapp 
+ {% block content-header %} {% if error %}
+{{ error }}
+{% endif %} {% if info %}
+{{ info }}
+{% endif %} {% if messages %} {% for message in messages %} 
+{{ message }}
+ {% endfor %} {% endif %} {% endblock %} {% block content %}{% endblock %} 
+ {% block sidebar %} {% endblock %} 
+Powered by Django-nonrel
+ {% block js %} {% endblock %}

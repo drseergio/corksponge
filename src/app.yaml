@@ -1,0 +1,42 @@
+application: corksponge
+version: 10
+runtime: python
+api_version: 1
+
+builtins:
+- remote_api: on
+
+inbound_services:
+- warmup
+
+handlers:
+- url: /_ah/queue/deferred
+  script: djangoappengine/deferred/handler.py
+  login: admin
+
+- url: /_ah/stats/.*
+  script: djangoappengine/appstats/ui.py
+
+- url: /media/admin
+  static_dir: django/contrib/admin/media
+  expiration: '0'
+
+# static file handler
+# all files are uploaded from corksponge/static
+# folder.
+- url: /(.*\.css)
+  mime_type: text/css
+  static_files: corksponge/static/\1
+  upload: corksponge/static/(.*\.css)
+
+- url: /(.*\.js)
+  mime_type: text/javascript
+  static_files: corksponge/static/\1
+  upload: corksponge/static/(.*\.js)
+
+- url: /(.*\.(bmp|gif|ico|jpeg|jpg|png))
+  static_files: corksponge/static/\1
+  upload: corksponge/static/(.*\.(bmp|gif|ico|jpeg|jpg|png))
+
+- url: /.*
+  script: djangoappengine/main/main.py

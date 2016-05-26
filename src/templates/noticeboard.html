@@ -1,0 +1,309 @@
+{% load static %}<!-- Copyright 2011 Sergey Pisarenko. Licensed under AGPL 3.0. -->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>corksponge</title>
+    <link rel="stylesheet" type="text/css" href="{% get_static_prefix %}css/ext-all.css">
+    <link rel="stylesheet" type="text/css" href="{% get_static_prefix %}css/common.css">
+    <script type="text/javascript" src="{% get_static_prefix %}js/ext-base.js"></script>
+    <script type="text/javascript" src="{% get_static_prefix %}js/ext-all.js"></script>
+    <script type="text/javascript" src="{% get_static_prefix %}js/ext-image.js"></script>
+    <script type="text/javascript" src="{% get_static_prefix %}js/ext-window.js"></script>
+    <script type="text/javascript" src="{% get_static_prefix %}js/ext-ddpanel.js"></script>
+  </head>
+
+  <body>
+    <div id="panel-basic" class="container"></div>
+    <script type="text/javascript">
+      function handleBoardClick(event, target, element) {
+        var corkboard = Ext.getCmp('main');
+
+        var event_x = event.getPageX();
+        var event_y = event.getPageY();
+
+        var scroll_offset = corkboard.body.getScroll();
+        var image_x = event_x + scroll_offset['left'];
+        var image_y = event_y + scroll_offset['top'];
+
+        var box = Ext.Msg.prompt('Enter image URL', 'Enter URL of the image you would like to add', function(btn, text) {
+          if (btn == 'ok') {
+            var url = text;
+            var imageWindow = createImageItem(url, image_x, image_y, 200, 200, '');
+            saveImage(imageWindow, image_x, image_y, url);
+          }
+        }, this, false, '');
+        box.getDialog().setPosition(event_x, event_y);
+      }
+
+      function changeImageURL(image, x, y) {
+        var box = Ext.Msg.prompt('Enter new image URL', 'Enter a new URL for the image', function(btn, text) {
+          if (btn == 'ok') {
+            image.setSrc(text);
+          }
+        }, this, false, '');
+        box.getDialog().setPosition(x, y);
+      }
+
+      function changeNote(note, imageWindow, x, y) {
+        var box = Ext.Msg.prompt('Enter note', 'Enter a new note, keep it concise and short', function(btn, text) {
+          if (btn == 'ok') {
+            Ext.Ajax.request({
+              method : 'POST',
+              url    : '/update',
+              params : {
+                board: '{{ board }}',
+                id   : imageWindow.id,
+                note : text,
+              },
+              success: function(response) {
+                note.update(text);
+                note.highlight();
+              },
+            });
+          }
+        }, this, false, '');
+        box.getDialog().setPosition(x, y);
+      }
+
+      function createImageItem(url, x, y, width, height, note) {
+        var image = new Ext.ux.Image({
+          src: url,
+        });
+        image.on('click', function(event) {
+          var x = event.getPageX();
+          var y = event.getPageY();
+          changeImageURL(image, x, y);
+        });
+
+        var imageWindow = new Ext.ux.CorkWindow({
+          x           : x,
+          y           : y,
+          width       : width,
+          height      : height,
+          cls         : 'image-item',
+          shadow      : 'frame',
+          shadowOffset: 8,
+          layout      : 'border',
+          listeners   : {
+            beforeclose: function(imageWindow) {
+              deleteImage(imageWindow);
+              return false;
+            },
+            move       : function(imageWindow, x, y) {
+              moveImage(imageWindow, x, y);
+            },
+            resize     : function(imageWindow, width, height) {
+              resizeImage(imageWindow, width, height);
+            },
+            activate   : function(imageWindow) {
+              activateImage(imageWindow);
+            },
+            render: function(panel) {
+              panel.getEl().on('mouseout', function(event, el) {
+                if (!event.within(panel.getEl(), true) && panel.original_height && panel.original_width) {
+                  panel.setSize(panel.original_width, panel.original_height);
+                  delete panel.original_width;
+                  delete panel.original_height;
+                  panel.getEl().setStyle('z-index', panel.original_zindex);
+                }
+              });
+            },
+          },
+          items       : [{
+              layout: 'fit',
+              region: 'center',
+              items : image,
+              border: false,
+            }, {
+              xtype    : 'box',
+              region   : 'south',
+              height   : 30,
+              style    : 'font-family: "Marker Felt",sans-serif;font-size: 14px;text-align: center;',
+              autoEl   : {
+                tag : 'div',
+                html: '<span>Click here to add a note...</span>'
+              },
+              border   : false,
+              margins  : {
+                top   : 10,
+                bottom: 5,
+              },
+              listeners: {
+                render: function(panel) {
+                  if (note !== '') {
+                    panel.el.update(note);
+                  }
+
+                  var imageWindow = panel.findParentByType('corkwindow');
+
+                  panel.getEl().on('click', function(event) {
+                    var x = event.getPageX();
+                    var y = event.getPageY();
+                    changeNote(panel.el, imageWindow, x, y);
+                  });
+                  panel.getEl().on('mouseover', function(event) {
+                    if (!imageWindow.original_width && !imageWindow.original_height) {
+                      imageWindow.original_width = imageWindow.getWidth();
+                      imageWindow.original_height = imageWindow.getHeight();
+                      imageWindow.setSize(imageWindow.getWidth() * 2, imageWindow.getHeight() * 2);
+                      imageWindow.original_zindex = imageWindow.getEl().getStyle('z-index');
+                      imageWindow.getEl().setStyle('z-index','80000');
+                    }
+                  });
+                }
+              }
+          }]
+        });
+
+        var corkpanel = Ext.getCmp('main');
+        corkpanel.add(imageWindow);
+        corkpanel.doLayout();
+        imageWindow.show();
+        return imageWindow;
+      }
+
+      function saveImage(imageWindow, x, y, url) {
+        Ext.Ajax.request({
+          method : 'POST',
+          url    : '/save',
+          params : {
+            board : '{{ board }}',
+            x     : x,
+            y     : y,
+            width : 200,
+            height: 200,
+            url   : url,
+          },
+          success: function(response) {
+            imageWindow.getEl().frame('red');
+            imageWindow.id = response.responseText;
+          },
+          failure: function() {
+            imageWindow.getEl().disableShadow();
+            imageWindow.getEl().puff();
+          }
+        });
+      }
+
+      function deleteImage(imageWindow) {
+        Ext.Ajax.request({
+          method: 'POST',
+          url   : '/delete',
+          params: {
+            board: '{{ board }}',
+            id   : imageWindow.id
+          },
+          success: function() {
+            imageWindow.getEl().disableShadow();
+            imageWindow.getEl().puff();
+          }
+        });
+      }
+
+      function moveImage(imageWindow, x, y) {
+        if (isNaN(imageWindow.id)) {
+          return;
+        }
+
+        Ext.Ajax.request({
+          method: 'POST',
+          url   : '/update',
+          params: {
+            board: '{{ board }}',
+            id   : imageWindow.id,
+            x    : x,
+            y    : y,
+          },
+        });
+      }
+
+      function resizeImage(imageWindow, width, height) {
+        if (isNaN(imageWindow.id) || imageWindow.original_width || imageWindow.original_height) {
+          return;
+        }
+
+        Ext.Ajax.request({
+          method: 'POST',
+          url   : '/update',
+          params: {
+            board: '{{ board }}',
+            id    : imageWindow.id,
+            height: height,
+            width : width,
+          },
+        });
+      }
+
+      function activateImage(imageWindow) {
+        if (isNaN(imageWindow.id)) {
+          return;
+        }
+
+        Ext.Ajax.request({
+          method: 'POST',
+          url   : '/click',
+          params: {
+            board: '{{ board }}',
+            id    : imageWindow.id,
+          },
+        });
+      }
+
+      function loadImages() {
+        var store = new Ext.data.Store({
+          url   : '/get/{{ board }}',
+          reader: new Ext.data.JsonReader({
+            fields: [{
+                name: 'id'
+              }, {
+                name: 'note'
+              }, {
+                name: 'x'
+              }, {
+                name: 'y'
+              }, {
+                name: 'height'
+              }, {
+                name: 'width'
+              }, {
+                name: 'url'
+            }]
+          })
+        });
+        store.load();
+        store.on('load', function() {
+          store.data.each(function() {
+            var imageWindow = createImageItem(this.data['url'], this.data['x'], this.data['y'], this.data['width'], this.data['height'], this.data['note']);
+            imageWindow.id = this.data['id'];
+          });
+        });
+      }
+
+      Ext.onReady(function() {
+        Ext.getBody().setStyle('overflow','hidden');
+
+        var corkpanel = new Ext.ux.DDScrollingPanel({
+          id          : 'corkpanel',
+          autoScroll  : false,
+          renderTo    : 'panel-basic',
+          items       : [{
+            id          : 'main',
+            width       : {{ max_x }},
+            height      : {{ max_y }},
+            autoScroll  : false,
+            bodyCssClass: 'noticeboard',
+            listeners   : {
+              render: function(panel) {
+                panel.body.on('dblclick', handleBoardClick);
+              }
+            }
+          }],
+        });
+
+        loadImages();
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,40 @@
+.noticeboard {
+  background-image: url('../images/corkboard.jpg');
+  background-repeat: repeat;
+}
+
+.image-item .x-window-header {
+  background-color: white !important;
+}
+
+.image-item .x-window-tr,
+.image-item .x-window-tl,
+.image-item .x-window-bc,
+.image-item .x-window-bl,
+.image-item .x-window-br,
+.image-item .x-window-ml,
+.image-item .x-window-mr {
+  background-color: white !important;
+  background-image: none !important;
+}
+
+.image-item .x-window-mc {
+  background-color: white;
+  border-width: 0px !important;
+}
+
+.x-panel-ghost {
+  background-color: #e6e6e6;
+}
+
+.x-panel-ghost ul {
+  border-color: #afafaf;
+}
+
+.x-panel-ghost .x-window-tl {
+  border-bottom-color: #afafaf;
+}
+
+.x-border-layout-ct {
+  background-color: white !important;
+}

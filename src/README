@@ -1,0 +1,23 @@
+corksponge is a web application which brings a virtual cork noticeboard.
+
+The initial use case is a virtual collage for sketching out life goals
+similar to ideas expressed as "The law of attraction".
+
+corksponge is licensed under AGPL 3.0
+
+The webapp is built using Django as the backend and ExtJS as the client-side
+library. It's designed to be deployed on Google AppEngine but can happily
+exist in other environments.
+
+Before deploying verify settings in 'app.yaml' and 'settings.py'.
+
+To deploy in AppEngine:
+
+$ python manage.py deploy
+
+The admin console is accessible on /admin. To create an admin user use:
+
+$ python manage.py remote createsuperuser
+
+The texture is taken from:
+http://www.fuzzimo.com/ (fzm-Corkboard.Texture)
